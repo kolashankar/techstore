@@ -342,10 +342,14 @@ const CheckoutPage = () => {
                               className="flex items-center gap-4 p-4 rounded-xl border-2 border-slate-200 hover:border-primary hover:bg-primary/5 transition-all duration-200 group bg-white shadow-sm hover:shadow-md w-full text-left"
                             >
                               <div 
-                                className="w-14 h-14 rounded-full flex items-center justify-center text-white shadow-md group-hover:shadow-lg transition-all duration-200 flex-shrink-0"
-                                style={{ backgroundColor: app.color }}
+                                className="w-14 h-14 rounded-full flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-200 flex-shrink-0 overflow-hidden"
+                                style={{ backgroundColor: app.logo ? '#ffffff' : app.color }}
                               >
-                                <Smartphone className="w-7 h-7 stroke-[2.5]" />
+                                {app.logo ? (
+                                  <img src={app.logo} alt={app.name} className="w-full h-full object-contain p-2" />
+                                ) : (
+                                  <Smartphone className="w-7 h-7 stroke-[2.5] text-white" />
+                                )}
                               </div>
                               <span className="font-semibold text-lg text-slate-800 group-hover:text-slate-900">{app.name}</span>
                             </button>
