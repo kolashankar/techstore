@@ -103,10 +103,19 @@ Last Updated: Backend testing complete - all 6 APIs working correctly with Phone
 
 ### PhonePe Credentials (Configured ✅)
 ```
-Client ID: M23HX1NJIDUCT_2601152130
-Client Secret: YTM3YjQwMjEtNGE5Yy00ZTA2LTg5Y2QtYzJjNDM5ZjA3N2Zh
+SANDBOX TESTING:
+Merchant ID: PGTESTPAYUAT86
+Salt Key: 96434309-7796-489d-8924-ab56988a6076
+Salt Index: 1
+Environment: Sandbox
+
+PRODUCTION (Original):
+Merchant ID: M23HX1NJIDUCT_2601152130
+Salt Secret: YTM3YjQwMjEtNGE5Yy00ZTA2LTg5Y2QtYzJjNDM5ZjA3N2Zh
 Environment: Production
 ```
+
+**Note:** Currently configured for SANDBOX testing. Switch to PRODUCTION credentials before live deployment.
 
 ### PhonePe API Endpoints
 - Base URL: `https://api.phonepe.com/apis/hermes`
