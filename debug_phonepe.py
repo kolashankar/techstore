@@ -72,7 +72,7 @@ print(f"Base64 payload: {payload_base64}")
 print()
 
 # Generate checksum
-endpoint = "/v1/pay"
+endpoint = "/pg/v1/pay"
 print(f"Endpoint: {endpoint}")
 
 print("\n=== Checksum Generation ===")
