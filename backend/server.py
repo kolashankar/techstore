@@ -454,7 +454,7 @@ async def check_payment_status(order_id: str):
             )
         
         # 2. Generate checksum for status check
-        endpoint = f"/v1/status/{PHONEPE_MERCHANT_ID}/{merchant_transaction_id}"
+        endpoint = f"/pg/v1/status/{PHONEPE_MERCHANT_ID}/{merchant_transaction_id}"
         string_to_hash = endpoint + PHONEPE_SALT_KEY
         sha256_hash = hashlib.sha256(string_to_hash.encode()).hexdigest()
         checksum = sha256_hash + "###" + str(PHONEPE_SALT_INDEX)
