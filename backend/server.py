@@ -24,8 +24,10 @@ db = client[os.environ['DB_NAME']]
 # Create the main app without a prefix
 app = FastAPI()
 
-# Create a router with the /api prefix
-api_router = APIRouter(prefix="/api")
+# Create a router WITHOUT prefix initially
+# We will include it twice: once with /api and once without
+# This handles cases where ingress might or might not strip the prefix
+router = APIRouter()
 
 
 # Define Models
@@ -102,11 +104,11 @@ class PaymentResponse(BaseModel):
     verified_at: Optional[str] = None
 
 # Add your routes to the router instead of directly to app
-@api_router.get("/")
+@router.get("/")
 async def root():
     return {"message": "Hello World"}
 
-@api_router.post("/status", response_model=StatusCheck)
+@router.post("/status", response_model=StatusCheck)
 async def create_status_check(input: StatusCheckCreate):
     status_dict = input.model_dump()
     status_obj = StatusCheck(**status_dict)
@@ -118,7 +120,7 @@ async def create_status_check(input: StatusCheckCreate):
     _ = await db.status_checks.insert_one(doc)
     return status_obj
 
-@api_router.get("/status", response_model=List[StatusCheck])
+@router.get("/status", response_model=List[StatusCheck])
 async def get_status_checks():
     # Exclude MongoDB's _id field from the query results
     status_checks = await db.status_checks.find({}, {"_id": 0}).to_list(1000)
@@ -142,7 +144,7 @@ def generate_unique_amount(base_amount: float) -> float:
     unique_amount = base_amount + random_paise
     return round(unique_amount, 2)
 
-@api_router.post("/orders", response_model=Order)
+@router.post("/orders", response_model=Order)
 async def create_order(order_input: OrderCreate, request: Request):
     """Create a new order with unique payment amount"""
     try:
@@ -185,7 +187,7 @@ async def create_order(order_input: OrderCreate, request: Request):
         logger.error(f"Error creating order: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to create order: {str(e)}")
 
-@api_router.get("/orders/{order_id}", response_model=Order)
+@router.get("/orders/{order_id}", response_model=Order)
 async def get_order(order_id: str):
     """Get order details by order_id"""
     order = await db.orders.find_one({"order_id": order_id}, {"_id": 0})
@@ -255,7 +257,7 @@ def calculate_confidence_score(order: dict, payment: PaymentVerification, reques
     
     return min(score, 100)  # Cap at 100
 
-@api_router.post("/verify-payment", response_model=PaymentResponse)
+@router.post("/verify-payment", response_model=PaymentResponse)
 async def verify_payment(payment: PaymentVerification, request: Request):
     """
     Smart payment verification with auto-matching
@@ -404,7 +406,7 @@ async def verify_payment(payment: PaymentVerification, request: Request):
 
 # ==================== ADMIN ENDPOINTS (Optional - for future use) ====================
 
-@api_router.get("/admin/pending-reviews")
+@router.get("/admin/pending-reviews")
 async def get_pending_reviews():
     """Get all payments pending manual review"""
     orders = await db.orders.find(
@@ -421,7 +423,7 @@ async def get_pending_reviews():
     
     return {"pending_reviews": orders, "count": len(orders)}
 
-@api_router.post("/admin/approve-payment/{order_id}")
+@router.post("/admin/approve-payment/{order_id}")
 async def admin_approve_payment(order_id: str):
     """Manually approve a payment (admin endpoint)"""
     order = await db.orders.find_one({"order_id": order_id}, {"_id": 0})
@@ -460,13 +462,17 @@ async def admin_approve_payment(order_id: str):
     
     return {"success": True, "message": "Payment approved successfully", "order_id": order_id}
 
-# Include the router in the main app
-app.include_router(api_router)
+# Include the router in the main app TWICE
+# 1. With /api prefix (standard)
+app.include_router(router, prefix="/api")
+
+# 2. Without prefix (in case ingress strips /api)
+app.include_router(router)
 
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=["*"], # Allow all origins for simplicity and to fix CORS issues
     allow_methods=["*"],
     allow_headers=["*"],
 )
