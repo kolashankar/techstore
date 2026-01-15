@@ -465,8 +465,8 @@ class TechStoreAPITester:
                     timeout=30
                 )
                 
-                # Should return 400 for invalid UTR
-                if response.status_code != 400:
+                # Should return 400 or 422 for invalid UTR (422 for validation errors)
+                if response.status_code not in [400, 422]:
                     self.log_result(
                         "UTR Validation",
                         False,
