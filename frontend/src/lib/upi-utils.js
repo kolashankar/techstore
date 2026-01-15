@@ -6,7 +6,7 @@ export const UPI_CONFIG = {
     color: "#ffffff", // White background for logo
     package: "com.google.android.apps.nbu.paisa.user",
     scheme: "gpay",
-    logo: "https://upload.wikimedia.org/wikipedia/commons/f/f2/Google_Pay_Logo.svg"
+    logo: "/icons/gpay.svg"
   },
   phonepe: {
     id: "phonepe",
@@ -15,7 +15,7 @@ export const UPI_CONFIG = {
     color: "#5F259F", // Purple
     package: "com.phonepe.app",
     scheme: "phonepe",
-    logo: "https://upload.wikimedia.org/wikipedia/commons/7/71/PhonePe_Logo.svg"
+    logo: "/icons/phonepe.svg"
   },
   paytm: {
     id: "paytm",
@@ -24,7 +24,7 @@ export const UPI_CONFIG = {
     color: "#ffffff", // White
     package: "net.one97.paytm",
     scheme: "paytm",
-    logo: "https://upload.wikimedia.org/wikipedia/commons/2/24/Paytm_Logo_%28standalone%29.svg"
+    logo: "/icons/paytm.svg"
   },
   bhim: {
     id: "bhim",
@@ -33,7 +33,7 @@ export const UPI_CONFIG = {
     color: "#ffffff", // White
     package: "in.org.npci.upiapp",
     scheme: "bhim",
-    logo: "https://upload.wikimedia.org/wikipedia/commons/d/d1/BHIM_SVG_Logo.svg"
+    logo: "/icons/bhim.svg"
   }
 };
 
