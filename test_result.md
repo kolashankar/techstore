@@ -261,13 +261,17 @@ test_plan:
     - "PhonePe Payment Gateway Integration"
     - "Payment Initiation API"
     - "Payment Callback Handler"
+    - "Payment Status Check API"
+    - "Order Creation with Gateway Fields"
     - "Automatic Payment Redirect"
     - "Payment Success Page"
     - "Payment Failed Page"
   stuck_tasks: []
-  test_all: false
+  test_all: true
   test_priority: "high_first"
 
 agent_communication:
     - agent: "main"
       message: "Phase 1 and Phase 2 completed (80% total completion). Implemented complete PhonePe payment gateway integration with automatic callback verification. Removed entire UTR manual entry system. Backend now has payment initiation, callback handling, and status check APIs with signature generation. Frontend updated with automatic redirect flow, removed all UTR input forms, and created success/failure pages. UI is fully white-labeled with zero PhonePe branding. Ready for backend and frontend testing to verify end-to-end payment flow."
+    - agent: "main"
+      message: "Starting Phase 3 (Testing). Will test backend APIs first: order creation, payment initiation with PhonePe signature generation, callback handling, and status verification. Then will test frontend flow with automatic redirects and success/failure pages."
