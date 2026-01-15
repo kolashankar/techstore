@@ -205,7 +205,7 @@ All features are supported in:
 ## Production URL
 
 Once deployed, the updated payment UI will be live at:
-https://techstore-fix-1.preview.emergentagent.com/checkout
+https://upiflow-platform.preview.emergentagent.com/checkout
 
 ---
 
