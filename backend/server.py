@@ -274,7 +274,7 @@ async def initiate_payment(payment_request: PaymentInitiateRequest, request: Req
         payload_base64 = base64.b64encode(payload_json.encode()).decode()
         
         # 5. Generate checksum
-        endpoint = "/pg/v1/pay"
+        endpoint = "/v1/pay"
         checksum = generate_phonepe_checksum(payload_base64, endpoint)
         
         # 6. Make API call to PhonePe
