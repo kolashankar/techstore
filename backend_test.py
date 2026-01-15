@@ -11,7 +11,7 @@ from datetime import datetime
 import sys
 
 # Backend URL from frontend/.env
-BACKEND_URL = "https://upiflow-platform.preview.emergentagent.com/api"
+BACKEND_URL = "https://upitest-phase3.preview.emergentagent.com/api"
 
 class TechStoreAPITester:
     def __init__(self):

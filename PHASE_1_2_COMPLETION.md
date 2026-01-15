@@ -156,12 +156,12 @@
    - Environment: Production
 
 2. **Callback URL:**
-   - Backend: `https://upiflow-platform.preview.emergentagent.com/api/payment/callback`
+   - Backend: `https://upitest-phase3.preview.emergentagent.com/api/payment/callback`
    - Must be publicly accessible for PhonePe to send callbacks
 
 3. **Frontend URLs:**
-   - Success: `https://upiflow-platform.preview.emergentagent.com/payment-success`
-   - Failure: `https://upiflow-platform.preview.emergentagent.com/payment-failed`
+   - Success: `https://upitest-phase3.preview.emergentagent.com/payment-success`
+   - Failure: `https://upitest-phase3.preview.emergentagent.com/payment-failed`
 
 4. **Testing Requirements:**
    - PhonePe merchant account must be active

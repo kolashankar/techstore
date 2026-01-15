@@ -205,7 +205,7 @@ All features are supported in:
 ## Production URL
 
 Once deployed, the updated payment UI will be live at:
-https://upiflow-platform.preview.emergentagent.com/checkout
+https://upitest-phase3.preview.emergentagent.com/checkout
 
 ---
 

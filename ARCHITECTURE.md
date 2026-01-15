@@ -310,7 +310,7 @@ DB_NAME="test_database"
 CORS_ORIGINS="*"
 
 # Backend URL for callbacks
-REACT_APP_BACKEND_URL="https://upiflow-platform.preview.emergentagent.com"
+REACT_APP_BACKEND_URL="https://upitest-phase3.preview.emergentagent.com"
 
 # PhonePe Configuration
 PHONEPE_MERCHANT_ID="M23HX1NJIDUCT_2601152130"
@@ -321,7 +321,7 @@ PHONEPE_ENV="production"
 
 ```bash
 # Frontend (.env)
-REACT_APP_BACKEND_URL="https://upiflow-platform.preview.emergentagent.com"
+REACT_APP_BACKEND_URL="https://upitest-phase3.preview.emergentagent.com"
 WDS_SOCKET_PORT="443"
 ENABLE_HEALTH_CHECK="false"
 ```
