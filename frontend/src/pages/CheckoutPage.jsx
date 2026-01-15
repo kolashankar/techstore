@@ -369,24 +369,23 @@ const CheckoutPage = () => {
                           <div className="space-y-1">
                             <p className="text-sm font-medium text-blue-900">Verify Your Payment</p>
                             <p className="text-xs text-blue-700">
-                              Enter the exact amount you paid and your transaction ID (UTR) from the payment confirmation.
+                              Enter the transaction ID (UTR) from the payment confirmation.
                             </p>
                           </div>
                         </div>
                         
                         <form onSubmit={handleVerify} className="space-y-4">
                           <div className="space-y-2">
-                            <Label htmlFor="paid-amount">Amount Paid (₹)</Label>
+                            <Label htmlFor="paid-amount">Amount to be Verified (₹)</Label>
                             <Input 
                               id="paid-amount" 
                               type="number"
                               step="0.01"
-                              placeholder={orderData?.unique_amount.toString()}
                               value={paidAmount}
-                              onChange={(e) => setPaidAmount(e.target.value)}
-                              className="h-12 text-lg font-medium"
+                              readOnly
+                              className="h-12 text-lg font-medium bg-slate-100 text-slate-500 cursor-not-allowed"
                             />
-                            <p className="text-xs text-slate-500">Enter the exact amount including paise (e.g., {orderData?.unique_amount})</p>
+                            <p className="text-xs text-slate-500">Exact amount required for automatic verification</p>
                           </div>
                           
                           <div className="space-y-2">
@@ -431,7 +430,7 @@ const CheckoutPage = () => {
                       {orderData && (
                         <div className="bg-white p-6 rounded-xl border-2 border-dashed border-slate-300 inline-block mx-auto">
                           <img 
-                            src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=upi://pay?pa=${UPI_CONFIG.paytm.vpa}&pn=TechStore&am=${orderData.unique_amount}&cu=INR&tn=Order-${orderData.order_id}`}
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`upi://pay?pa=${UPI_CONFIG.paytm.vpa}&pn=TechStore&am=${orderData.unique_amount}&cu=INR&tn=Order-${orderData.order_id}`)}`}
                             alt="UPI QR Code"
                             className="w-48 h-48"
                             onError={(e) => {
