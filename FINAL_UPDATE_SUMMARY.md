@@ -205,7 +205,7 @@ All features are supported in:
 ## Production URL
 
 Once deployed, the updated payment UI will be live at:
-https://upitest-phase3.preview.emergentagent.com/checkout
+https://payment-fix-47.preview.emergentagent.com/checkout
 
 ---
 
