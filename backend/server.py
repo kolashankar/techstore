@@ -40,9 +40,9 @@ PHONEPE_ENV = os.environ.get('PHONEPE_ENV', 'production')  # 'production' or 'sa
 
 # PhonePe API URLs
 if PHONEPE_ENV == 'sandbox':
-    PHONEPE_BASE_URL = "https://api-preprod.phonepe.com/apis/hermes"
+    PHONEPE_BASE_URL = "https://api-preprod.phonepe.com/apis/pg-sandbox"
 else:
-    PHONEPE_BASE_URL = "https://api.phonepe.com/apis/hermes"
+    PHONEPE_BASE_URL = "https://api.phonepe.com/apis/pg"
 
 # Get backend URL from environment
 BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'http://localhost:8001')
