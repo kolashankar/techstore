@@ -111,11 +111,14 @@ backend:
     file: "backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
           agent: "main"
           comment: "Fixed logger initialization issue - moved logger setup before routes to prevent undefined logger error causing 422 status"
+        - working: true
+          agent: "testing"
+          comment: "✅ VERIFIED: Order creation API working perfectly. Returns 200 status (not 422), generates unique_amount with random paise (e.g., 499.00 → 499.54), includes all required fields (order_id, unique_amount, payment_window_expires). Tested with various amounts (0.01 to 10000.00) - all successful. Logger functioning correctly without undefined errors."
   
   - task: "Payment Verification API"
     implemented: true
@@ -123,11 +126,14 @@ backend:
     file: "backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: true
           agent: "main"
           comment: "Payment verification logic already properly implemented with confidence scoring, UTR validation, and amount matching"
+        - working: true
+          agent: "testing"
+          comment: "✅ VERIFIED: Payment verification API fully functional. Confidence scoring works correctly (95-100% for exact matches), UTR validation enforces 12-digit format (returns 422 for invalid), duplicate UTR prevention working (returns 400 with proper error message), amount matching with unique_amount works perfectly. All verification logic operating as designed."
 
 frontend:
   - task: "Order Creation Flow"
