@@ -239,10 +239,13 @@ class TechStoreAPITester:
             )
             return False
         
-        # Test payment verification
+        # Test payment verification with unique UTR
+        import random
+        unique_utr = f"{random.randint(100000000000, 999999999999)}"  # Generate unique 12-digit UTR
+        
         payment_data = {
             "order_id": self.created_order_id,
-            "utr": "123456789012",  # Valid 12-digit UTR
+            "utr": unique_utr,
             "paid_amount": self.unique_amount
         }
         
