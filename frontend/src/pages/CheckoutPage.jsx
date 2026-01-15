@@ -34,23 +34,37 @@ const CheckoutPage = () => {
         setIsCreatingOrder(true);
         const backendUrl = process.env.REACT_APP_BACKEND_URL;
         
+        // Ensure amount is a valid number
+        const amount = typeof product.price === 'number' ? product.price : parseFloat(product.price);
+        
+        if (isNaN(amount)) {
+          throw new Error('Invalid product price');
+        }
+        
+        const payload = {
+          product_id: String(product.id),
+          product_name: String(product.name),
+          amount: amount
+        };
+        
+        console.log('Creating order with payload:', payload);
+        
         const response = await fetch(`${backendUrl}/api/orders`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            product_id: product.id,
-            product_name: product.name,
-            amount: product.price
-          })
+          body: JSON.stringify(payload)
         });
 
         if (!response.ok) {
-          throw new Error('Failed to create order');
+          const errorData = await response.json().catch(() => ({}));
+          console.error('Order creation failed:', response.status, errorData);
+          throw new Error(errorData.detail || 'Failed to create order');
         }
 
         const data = await response.json();
+        console.log('Order created successfully:', data);
         setOrderData(data);
         setIsCreatingOrder(false);
       } catch (error) {
