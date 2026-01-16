@@ -156,12 +156,12 @@
    - Environment: Production
 
 2. **Callback URL:**
-   - Backend: `https://keyerror-fix-1.preview.emergentagent.com/api/payment/callback`
+   - Backend: `https://phonepe-gateway-2.preview.emergentagent.com/api/payment/callback`
    - Must be publicly accessible for PhonePe to send callbacks
 
 3. **Frontend URLs:**
-   - Success: `https://keyerror-fix-1.preview.emergentagent.com/payment-success`
-   - Failure: `https://keyerror-fix-1.preview.emergentagent.com/payment-failed`
+   - Success: `https://phonepe-gateway-2.preview.emergentagent.com/payment-success`
+   - Failure: `https://phonepe-gateway-2.preview.emergentagent.com/payment-failed`
 
 4. **Testing Requirements:**
    - PhonePe merchant account must be active

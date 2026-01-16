@@ -40,7 +40,7 @@ curl -X POST https://techstore-4riw.onrender.com/api/orders \
 
 ```
 ❌ BEFORE:
-.env file → https://keyerror-fix-1.preview.emergentagent.com (OLD)
+.env file → https://phonepe-gateway-2.preview.emergentagent.com (OLD)
 Vercel Dashboard → https://techstore-4riw.onrender.com (IGNORED!)
 
 ✅ AFTER:

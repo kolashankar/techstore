@@ -4,8 +4,8 @@
 The `.env` files in the repository contained hardcoded preview URLs that were overriding the environment variables set in Vercel and Render dashboards.
 
 ## Root Cause
-- **Frontend `.env`** had: `REACT_APP_BACKEND_URL=https://keyerror-fix-1.preview.emergentagent.com`
-- **Backend `.env`** had: `REACT_APP_BACKEND_URL=https://keyerror-fix-1.preview.emergentagent.com`
+- **Frontend `.env`** had: `REACT_APP_BACKEND_URL=https://phonepe-gateway-2.preview.emergentagent.com`
+- **Backend `.env`** had: `REACT_APP_BACKEND_URL=https://phonepe-gateway-2.preview.emergentagent.com`
 - These files are committed to Git and deployed, overriding dashboard environment variables
 
 ## Changes Made

@@ -205,7 +205,7 @@ All features are supported in:
 ## Production URL
 
 Once deployed, the updated payment UI will be live at:
-https://keyerror-fix-1.preview.emergentagent.com/checkout
+https://phonepe-gateway-2.preview.emergentagent.com/checkout
 
 ---
 

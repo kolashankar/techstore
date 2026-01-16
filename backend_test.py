@@ -11,7 +11,7 @@ from datetime import datetime
 import sys
 
 # Backend URL from frontend/.env
-BACKEND_URL = "https://keyerror-fix-1.preview.emergentagent.com/api"
+BACKEND_URL = "https://phonepe-gateway-2.preview.emergentagent.com/api"
 
 class TechStoreAPITester:
     def __init__(self):
