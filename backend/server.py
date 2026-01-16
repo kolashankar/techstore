@@ -115,14 +115,28 @@ class PaymentStatusResponse(BaseModel):
 
 # ==================== PHONEPE HELPER FUNCTIONS ====================
 
-def generate_phonepe_checksum(payload: str, endpoint: str) -> str:
+def generate_phonepe_checksum(payload_base64: str, endpoint: str) -> str:
     """
-    Generate PhonePe checksum/signature
-    Format: SHA256(base64_payload + endpoint + salt_key) + "###" + salt_index
+    Generate PhonePe checksum/signature (X-VERIFY header)
+    Correct Formula per PhonePe docs:
+    1. payload_hash = SHA256(base64_payload)
+    2. base_string = endpoint + payload_hash
+    3. signature_string = base_string + "###" + salt_index + salt_key
+    4. X-VERIFY = SHA256(signature_string) + "###" + salt_index
     """
-    string_to_hash = payload + endpoint + PHONEPE_SALT_KEY
-    sha256_hash = hashlib.sha256(string_to_hash.encode()).hexdigest()
-    checksum = sha256_hash + "###" + str(PHONEPE_SALT_INDEX)
+    # Step 1: Hash the base64 payload
+    payload_hash = hashlib.sha256(payload_base64.encode()).hexdigest()
+    
+    # Step 2: Create base string
+    base_string = endpoint + payload_hash
+    
+    # Step 3: Append salt info
+    signature_string = base_string + "###" + str(PHONEPE_SALT_INDEX) + PHONEPE_SALT_KEY
+    
+    # Step 4: Hash and format final checksum
+    final_hash = hashlib.sha256(signature_string.encode()).hexdigest()
+    checksum = final_hash + "###" + str(PHONEPE_SALT_INDEX)
+    
     return checksum
 
 def verify_phonepe_callback_checksum(response_base64: str, received_checksum: str) -> bool:
