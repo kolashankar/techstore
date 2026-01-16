@@ -36,12 +36,12 @@ else:
 # Step 2: Initiate payment
 print(f"\n[2/3] Initiating PhonePe payment for order {order_id}...")
 payment_data = {
-    "order_id": order_id
+    "order_id": order_id,
+    "payment_app": "phonepe"
 }
 
 response = requests.post(f"{BASE_URL}/payment/initiate", json=payment_data)
 print(f"Response status: {response.status_code}")
-print(f"Response body: {response.text[:500]}")
 
 if response.status_code == 200:
     payment = response.json()
@@ -63,7 +63,11 @@ if response.status_code == 200:
         print(response.text)
 else:
     print(f"❌ Payment initiation failed!")
-    print(f"   Error: {response.text}")
+    try:
+        error_data = response.json()
+        print(f"   Error: {json.dumps(error_data, indent=2)}")
+    except:
+        print(f"   Error: {response.text}")
 
 print("\n" + "=" * 80)
 print("Test Complete")
