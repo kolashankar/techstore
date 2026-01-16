@@ -27,7 +27,7 @@
 
 ### 1. Test Order Creation
 ```bash
-curl -X POST https://payment-fix-47.preview.emergentagent.com/api/orders \
+curl -X POST https://keyerror-fix-1.preview.emergentagent.com/api/orders \
   -H "Content-Type: application/json" \
   -d '{
     "product_id": "TEST-001",
@@ -38,7 +38,7 @@ curl -X POST https://payment-fix-47.preview.emergentagent.com/api/orders \
 
 ### 2. Test Payment Initiation
 ```bash
-curl -X POST https://payment-fix-47.preview.emergentagent.com/api/payment/initiate \
+curl -X POST https://keyerror-fix-1.preview.emergentagent.com/api/payment/initiate \
   -H "Content-Type: application/json" \
   -d '{
     "order_id": "ORD-XXXXXXXX",
@@ -48,7 +48,7 @@ curl -X POST https://payment-fix-47.preview.emergentagent.com/api/payment/initia
 
 ### 3. Check Payment Status
 ```bash
-curl https://payment-fix-47.preview.emergentagent.com/api/payment/status/ORD-XXXXXXXX
+curl https://keyerror-fix-1.preview.emergentagent.com/api/payment/status/ORD-XXXXXXXX
 ```
 
 ---
@@ -203,7 +203,7 @@ M23HX1NJIDUCT_2601152130
 
 ### Callback URL
 ```
-https://payment-fix-47.preview.emergentagent.com/api/payment/callback
+https://keyerror-fix-1.preview.emergentagent.com/api/payment/callback
 ```
 
 ### Frontend URLs

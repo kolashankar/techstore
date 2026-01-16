@@ -50,7 +50,7 @@ Open browser DevTools (F12) → Console tab → Try checkout
 
 **Before fix:**
 ```
-❌ POST https://payment-fix-47.preview.emergentagent.com/api/orders [422]
+❌ POST https://keyerror-fix-1.preview.emergentagent.com/api/orders [422]
 ```
 
 **After fix:**

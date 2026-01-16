@@ -54,9 +54,9 @@ payload_data = {
     "merchantTransactionId": merchant_transaction_id,
     "merchantUserId": "USER_ORD-A4504B2F",
     "amount": amount_in_paise,
-    "redirectUrl": "https://payment-fix-47.preview.emergentagent.com/api/payment/callback",
+    "redirectUrl": "https://keyerror-fix-1.preview.emergentagent.com/api/payment/callback",
     "redirectMode": "POST",
-    "callbackUrl": "https://payment-fix-47.preview.emergentagent.com/api/payment/callback",
+    "callbackUrl": "https://keyerror-fix-1.preview.emergentagent.com/api/payment/callback",
     "mobileNumber": "9999999999",
     "paymentInstrument": {
         "type": "PAY_PAGE"
