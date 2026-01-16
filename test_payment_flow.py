@@ -15,18 +15,9 @@ print("=" * 80)
 # Step 1: Create an order
 print("\n[1/3] Creating test order...")
 order_data = {
-    "items": [
-        {
-            "product_id": "test_product_1",
-            "name": "Test Product",
-            "price": 999.99,
-            "quantity": 1
-        }
-    ],
-    "customer_name": "Test Customer",
-    "customer_email": "test@example.com",
-    "customer_phone": "9999999999",
-    "shipping_address": "123 Test Street, Test City"
+    "product_id": "test_product_1",
+    "product_name": "Test Product",
+    "amount": 999.99
 }
 
 response = requests.post(f"{BASE_URL}/orders", json=order_data)
