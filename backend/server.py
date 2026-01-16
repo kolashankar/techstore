@@ -468,9 +468,10 @@ async def check_payment_status(order_id: str):
             )
         
         # 2. Generate checksum for status check
+        # For status API: X-VERIFY = SHA256(endpoint + "###" + salt_index + salt_key) + "###" + salt_index
         endpoint = f"/pg/v1/status/{PHONEPE_MERCHANT_ID}/{merchant_transaction_id}"
-        string_to_hash = endpoint + PHONEPE_SALT_KEY
-        sha256_hash = hashlib.sha256(string_to_hash.encode()).hexdigest()
+        signature_string = endpoint + "###" + str(PHONEPE_SALT_INDEX) + PHONEPE_SALT_KEY
+        sha256_hash = hashlib.sha256(signature_string.encode()).hexdigest()
         checksum = sha256_hash + "###" + str(PHONEPE_SALT_INDEX)
         
         # 3. Make status check API call
