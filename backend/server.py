@@ -305,6 +305,11 @@ async def initiate_payment(payment_request: PaymentInitiateRequest, request: Req
         
         logger.info(f"Initiating PhonePe payment for order {payment_request.order_id}")
         logger.info(f"PhonePe URL: {phonepe_url}")
+        logger.info(f"Merchant ID: {PHONEPE_MERCHANT_ID}")
+        logger.info(f"Salt Index: {PHONEPE_SALT_INDEX}")
+        logger.info(f"Environment: {PHONEPE_ENV}")
+        logger.info(f"X-VERIFY: {checksum}")
+        logger.info(f"Payload (first 200 chars): {payload_base64[:200]}")
         
         response = requests.post(phonepe_url, json=api_payload, headers=headers, timeout=30)
         response_data = response.json()
