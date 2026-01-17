@@ -11,8 +11,7 @@ from typing import List, Optional
 import uuid
 from datetime import datetime, timezone, timedelta
 import random
-import hashlib
-import base64
+import PaytmChecksum
 import json
 import requests
 
@@ -20,7 +19,7 @@ import requests
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# Configure logging FIRST before any routes or functions use it
+# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -32,25 +31,30 @@ mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
-# PhonePe Configuration
-PHONEPE_MERCHANT_ID = os.environ.get('PHONEPE_MERCHANT_ID', 'M23HX1NJIDUCT_2601152130')
-PHONEPE_SALT_KEY = os.environ.get('PHONEPE_SALT_KEY', 'YTM3YjQwMjEtNGE5Yy00ZTA2LTg5Y2QtYzJjNDM5ZjA3N2Zh')
-PHONEPE_SALT_INDEX = int(os.environ.get('PHONEPE_SALT_INDEX', '1'))
-PHONEPE_ENV = os.environ.get('PHONEPE_ENV', 'production')  # 'production' or 'sandbox'
+# Paytm Configuration
+PAYTM_ENVIRONMENT = os.environ.get('PAYTM_ENVIRONMENT', 'STAGING')
+PAYTM_MID = os.environ.get('PAYTM_MID', 'TESTMERCHANT')
+PAYTM_KEY = os.environ.get('PAYTM_KEY', 'TEST_MERCHANT_KEY_1234567890')
+PAYTM_WEBSITE = os.environ.get('PAYTM_WEBSITE', 'WEBSTAGING')
+PAYTM_INDUSTRY_TYPE = os.environ.get('PAYTM_INDUSTRY_TYPE', 'Retail')
+PAYTM_CHANNEL_ID = os.environ.get('PAYTM_CHANNEL_ID', 'WEB')
+PAYTM_CALLBACK_URL = os.environ.get('PAYTM_CALLBACK_URL', 'http://localhost:8001/api/payment/callback')
 
-# PhonePe API URLs
-if PHONEPE_ENV == 'sandbox':
-    PHONEPE_BASE_URL = "https://api-preprod.phonepe.com/apis/pg-sandbox"
+# Paytm API URLs
+if PAYTM_ENVIRONMENT == 'STAGING':
+    PAYTM_TXN_URL = "https://securegw-stage.paytm.in/theia/api/v1/initiateTransaction"
+    PAYTM_STATUS_URL = "https://securegw-stage.paytm.in/order/status"
 else:
-    PHONEPE_BASE_URL = "https://api.phonepe.com/apis/pg"
+    PAYTM_TXN_URL = "https://securegw.paytm.in/theia/api/v1/initiateTransaction"
+    PAYTM_STATUS_URL = "https://securegw.paytm.in/order/status"
 
 # Get backend URL from environment
 BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'http://localhost:8001')
 
-# Create the main app without a prefix
+# Create the main app
 app = FastAPI()
 
-# Create a router WITHOUT prefix initially
+# Create a router
 router = APIRouter()
 
 
@@ -82,11 +86,12 @@ class Order(BaseModel):
     product_id: str
     product_name: str
     base_amount: float
-    unique_amount: float  # We'll keep this for amount tracking
-    status: str = "pending"  # pending, success, failed, expired
-    payment_method: Optional[str] = None  # phonepe, gpay, bhim, paytm, etc.
-    payment_gateway_txn_id: Optional[str] = None  # PhonePe transaction ID
-    gateway_response: Optional[dict] = None  # Store full gateway response
+    unique_amount: float
+    status: str = "pending"  # pending, processing, success, failed, expired
+    payment_method: Optional[str] = None  # paytm, card, netbanking, upi
+    payment_gateway_txn_id: Optional[str] = None  # Paytm transaction ID
+    transaction_token: Optional[str] = None  # Paytm transaction token
+    gateway_response: Optional[dict] = None
     user_agent: Optional[str] = None
     ip_address: Optional[str] = None
     payment_window_expires: datetime
@@ -96,54 +101,168 @@ class Order(BaseModel):
 # Payment Gateway Models
 class PaymentInitiateRequest(BaseModel):
     order_id: str
-    payment_app: str  # phonepe, gpay, bhim, paytm, etc.
+    customer_id: str
+    customer_email: str
+    customer_mobile: str
 
 class PaymentInitiateResponse(BaseModel):
     success: bool
-    payment_url: str
-    transaction_id: str
+    transaction_token: str
     order_id: str
+    merchant_id: str
+    amount: float
 
 class PaymentStatusResponse(BaseModel):
     success: bool
-    status: str  # PAYMENT_SUCCESS, PAYMENT_PENDING, PAYMENT_FAILED
+    status: str  # SUCCESS, PENDING, FAILED
     transaction_id: str
     order_id: str
     amount: float
     message: str
 
 
-# ==================== PHONEPE HELPER FUNCTIONS ====================
+# ==================== PAYTM HELPER FUNCTIONS ====================
 
-def generate_phonepe_checksum(payload_base64: str, endpoint: str) -> str:
+def generate_transaction_token(order_id: str, amount: float, customer_id: str, customer_mobile: str) -> dict:
     """
-    Generate PhonePe checksum/signature (X-VERIFY header)
-    Correct Formula per PhonePe official docs:
-    string_to_hash = base64_payload + endpoint + salt_key
-    X-VERIFY = SHA256(string_to_hash) + "###" + salt_index
+    Generate Paytm transaction token for payment initiation
+    Returns: dict with success status and token or error message
     """
-    string_to_hash = payload_base64 + endpoint + PHONEPE_SALT_KEY
-    sha256_hash = hashlib.sha256(string_to_hash.encode()).hexdigest()
-    checksum = sha256_hash + "###" + str(PHONEPE_SALT_INDEX)
-    return checksum
-
-def verify_phonepe_callback_checksum(response_base64: str, received_checksum: str) -> bool:
-    """Verify checksum from PhonePe callback"""
     try:
-        expected_string = response_base64 + PHONEPE_SALT_KEY
-        expected_hash = hashlib.sha256(expected_string.encode()).hexdigest()
-        expected_checksum = expected_hash + "###" + str(PHONEPE_SALT_INDEX)
-        return expected_checksum == received_checksum
+        # Generate unique transaction ID
+        txn_id = f"TXN{int(datetime.now().timestamp() * 1000)}"
+        
+        # Prepare request parameters
+        paytm_params = {
+            "body": {
+                "requestType": "Payment",
+                "mid": PAYTM_MID,
+                "websiteName": PAYTM_WEBSITE,
+                "orderId": order_id,
+                "txnAmount": {
+                    "value": str(amount),
+                    "currency": "INR"
+                },
+                "userInfo": {
+                    "custId": customer_id,
+                    "mobile": customer_mobile
+                },
+                "callbackUrl": PAYTM_CALLBACK_URL
+            },
+            "head": {
+                "signature": ""
+            }
+        }
+        
+        # Generate checksum
+        checksum = PaytmChecksum.generateSignature(
+            json.dumps(paytm_params["body"]), 
+            PAYTM_KEY
+        )
+        paytm_params["head"]["signature"] = checksum
+        
+        # Make API call to Paytm
+        headers = {
+            "Content-Type": "application/json"
+        }
+        
+        url = f"{PAYTM_TXN_URL}?mid={PAYTM_MID}&orderId={order_id}"
+        
+        logger.info(f"Initiating Paytm transaction for order {order_id}")
+        logger.info(f"Paytm URL: {url}")
+        
+        response = requests.post(url, json=paytm_params, headers=headers, timeout=30)
+        response_data = response.json()
+        
+        logger.info(f"Paytm token response: {response_data}")
+        
+        if response_data.get("body", {}).get("resultInfo", {}).get("resultStatus") == "S":
+            # Success - extract token
+            token = response_data["body"]["txnToken"]
+            return {
+                "success": True,
+                "token": token,
+                "txn_id": txn_id,
+                "order_id": order_id
+            }
+        else:
+            # Failed
+            error_msg = response_data.get("body", {}).get("resultInfo", {}).get("resultMsg", "Token generation failed")
+            logger.error(f"Paytm token error: {error_msg}")
+            return {
+                "success": False,
+                "error": error_msg
+            }
+            
+    except Exception as e:
+        logger.exception(f"Error generating transaction token: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+
+def verify_paytm_checksum(paytm_params: dict, checksum: str) -> bool:
+    """Verify Paytm callback checksum"""
+    try:
+        return PaytmChecksum.verifySignature(paytm_params, PAYTM_KEY, checksum)
     except Exception as e:
         logger.error(f"Checksum verification error: {str(e)}")
         return False
+
+
+def get_payment_status_from_paytm(order_id: str) -> dict:
+    """
+    Get payment status from Paytm
+    Returns: dict with payment status information
+    """
+    try:
+        # Prepare request parameters
+        paytm_params = {
+            "body": {
+                "mid": PAYTM_MID,
+                "orderId": order_id
+            },
+            "head": {
+                "signature": ""
+            }
+        }
+        
+        # Generate checksum
+        checksum = PaytmChecksum.generateSignature(
+            json.dumps(paytm_params["body"]), 
+            PAYTM_KEY
+        )
+        paytm_params["head"]["signature"] = checksum
+        
+        # Make API call
+        headers = {
+            "Content-Type": "application/json"
+        }
+        
+        response = requests.post(PAYTM_STATUS_URL, json=paytm_params, headers=headers, timeout=30)
+        response_data = response.json()
+        
+        logger.info(f"Paytm status response: {response_data}")
+        
+        return {
+            "success": True,
+            "data": response_data
+        }
+        
+    except Exception as e:
+        logger.exception(f"Error checking payment status: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
 
 
 # ==================== BASIC ROUTES ====================
 
 @router.get("/")
 async def root():
-    return {"message": "Payment Gateway API"}
+    return {"message": "Paytm Payment Gateway API"}
 
 @router.post("/status", response_model=StatusCheck)
 async def create_status_check(input: StatusCheckCreate):
@@ -230,13 +349,13 @@ async def get_order(order_id: str):
     return order
 
 
-# ==================== PHONEPE PAYMENT GATEWAY ENDPOINTS ====================
+# ==================== PAYTM PAYMENT GATEWAY ENDPOINTS ====================
 
 @router.post("/payment/initiate", response_model=PaymentInitiateResponse)
 async def initiate_payment(payment_request: PaymentInitiateRequest, request: Request):
     """
-    Initiate payment with PhonePe gateway
-    Returns payment URL for redirect
+    Initiate payment with Paytm gateway
+    Returns transaction token for frontend to open Paytm payment page
     """
     try:
         # 1. Get order details
@@ -245,93 +364,45 @@ async def initiate_payment(payment_request: PaymentInitiateRequest, request: Req
         if not order:
             raise HTTPException(status_code=404, detail="Order not found")
         
-        if order['status'] != 'pending':
+        if order['status'] not in ['pending', 'processing']:
             raise HTTPException(status_code=400, detail=f"Order already {order['status']}")
         
-        # 2. Generate unique transaction ID
-        merchant_transaction_id = f"MT{int(datetime.now().timestamp() * 1000)}"
+        # 2. Generate transaction token from Paytm
+        token_response = generate_transaction_token(
+            order_id=payment_request.order_id,
+            amount=order['unique_amount'],
+            customer_id=payment_request.customer_id,
+            customer_mobile=payment_request.customer_mobile
+        )
         
-        # 3. Prepare PhonePe payload
-        amount_in_paise = int(order['unique_amount'] * 100)  # Convert to paise
-        
-        # Construct callback URL
-        callback_url = f"{BACKEND_URL}/api/payment/callback"
-        
-        payload_data = {
-            "merchantId": PHONEPE_MERCHANT_ID,
-            "merchantTransactionId": merchant_transaction_id,
-            "merchantUserId": f"USER_{order['order_id']}",
-            "amount": amount_in_paise,
-            "redirectUrl": callback_url,
-            "redirectMode": "POST",
-            "callbackUrl": callback_url,
-            "mobileNumber": "9999999999",  # Optional
-            "paymentInstrument": {
-                "type": "PAY_PAGE"
-            }
-        }
-        
-        # 4. Generate base64 payload
-        payload_json = json.dumps(payload_data)
-        payload_base64 = base64.b64encode(payload_json.encode()).decode()
-        
-        # 5. Generate checksum
-        endpoint = "/pg/v1/pay"
-        checksum = generate_phonepe_checksum(payload_base64, endpoint)
-        
-        # 6. Make API call to PhonePe
-        headers = {
-            "Content-Type": "application/json",
-            "X-VERIFY": checksum
-        }
-        
-        api_payload = {
-            "request": payload_base64
-        }
-        
-        phonepe_url = f"{PHONEPE_BASE_URL}{endpoint}"
-        
-        logger.info(f"Initiating PhonePe payment for order {payment_request.order_id}")
-        logger.info(f"PhonePe URL: {phonepe_url}")
-        logger.info(f"Merchant ID: {PHONEPE_MERCHANT_ID}")
-        logger.info(f"Salt Key (first 10 chars): {PHONEPE_SALT_KEY[:10]}...")
-        logger.info(f"Salt Index: {PHONEPE_SALT_INDEX}")
-        logger.info(f"Environment: {PHONEPE_ENV}")
-        logger.info(f"Payload data: {json.dumps(payload_data)}")
-        logger.info(f"X-VERIFY: {checksum}")
-        
-        response = requests.post(phonepe_url, json=api_payload, headers=headers, timeout=30)
-        response_data = response.json()
-        
-        logger.info(f"PhonePe response: {response_data}")
-        
-        if not response_data.get('success'):
-            error_msg = response_data.get('message', 'Payment initiation failed')
-            logger.error(f"PhonePe error: {error_msg}")
+        if not token_response["success"]:
+            error_msg = token_response.get("error", "Failed to generate transaction token")
+            logger.error(f"Paytm token error: {error_msg}")
             raise HTTPException(status_code=400, detail=error_msg)
         
-        # 7. Extract payment URL
-        payment_url = response_data['data']['instrumentResponse']['redirectInfo']['url']
+        # 3. Update order with transaction details
+        txn_id = token_response["txn_id"]
+        token = token_response["token"]
         
-        # 8. Update order with transaction details
         await db.orders.update_one(
             {"order_id": payment_request.order_id},
             {
                 "$set": {
-                    "payment_gateway_txn_id": merchant_transaction_id,
-                    "payment_method": payment_request.payment_app,
+                    "payment_gateway_txn_id": txn_id,
+                    "transaction_token": token,
                     "status": "processing"
                 }
             }
         )
         
-        logger.info(f"Payment initiated: Order {payment_request.order_id}, Txn {merchant_transaction_id}")
+        logger.info(f"Payment initiated: Order {payment_request.order_id}, Token generated")
         
         return PaymentInitiateResponse(
             success=True,
-            payment_url=payment_url,
-            transaction_id=merchant_transaction_id,
-            order_id=payment_request.order_id
+            transaction_token=token,
+            order_id=payment_request.order_id,
+            merchant_id=PAYTM_MID,
+            amount=order['unique_amount']
         )
         
     except HTTPException:
@@ -344,89 +415,86 @@ async def initiate_payment(payment_request: PaymentInitiateRequest, request: Req
 @router.post("/payment/callback")
 async def payment_callback(request: Request):
     """
-    Handle PhonePe payment callback
-    This endpoint receives POST data from PhonePe after payment
+    Handle Paytm payment callback
+    This endpoint receives POST data from Paytm after payment
     """
     try:
-        # Get form data or JSON based on PhonePe's response format
-        try:
-            form_data = await request.form()
-            response_base64 = form_data.get('response')
-            checksum = form_data.get('checksum')
-        except:
-            body = await request.json()
-            response_base64 = body.get('response')
-            checksum = body.get('checksum')
+        # Get form data from Paytm callback
+        form_data = await request.form()
+        paytm_params = dict(form_data)
         
-        if not response_base64:
-            logger.error("No response data in callback")
+        logger.info(f"Paytm callback received: {paytm_params}")
+        
+        # Extract checksum
+        checksum = paytm_params.pop('CHECKSUMHASH', None)
+        
+        if not checksum:
+            logger.error("No checksum in callback")
             raise HTTPException(status_code=400, detail="Invalid callback data")
         
         # Verify checksum
-        if not verify_phonepe_callback_checksum(response_base64, checksum):
+        if not verify_paytm_checksum(paytm_params, checksum):
             logger.error("Checksum verification failed")
             raise HTTPException(status_code=400, detail="Invalid checksum")
         
-        # Decode response
-        response_json = base64.b64decode(response_base64).decode()
-        response_data = json.loads(response_json)
+        # Extract order details
+        order_id = paytm_params.get('ORDERID')
+        txn_id = paytm_params.get('TXNID')
+        status = paytm_params.get('STATUS')
+        resp_code = paytm_params.get('RESPCODE')
+        resp_msg = paytm_params.get('RESPMSG')
         
-        logger.info(f"PhonePe callback received: {response_data}")
-        
-        merchant_transaction_id = response_data.get('data', {}).get('merchantTransactionId')
-        
-        if not merchant_transaction_id:
-            logger.error("No transaction ID in callback")
+        if not order_id:
+            logger.error("No order ID in callback")
             raise HTTPException(status_code=400, detail="Invalid transaction data")
         
-        # Find order by transaction ID
-        order = await db.orders.find_one({"payment_gateway_txn_id": merchant_transaction_id}, {"_id": 0})
+        # Find order
+        order = await db.orders.find_one({"order_id": order_id}, {"_id": 0})
         
         if not order:
-            logger.error(f"Order not found for transaction: {merchant_transaction_id}")
+            logger.error(f"Order not found for: {order_id}")
             raise HTTPException(status_code=404, detail="Order not found")
         
         # Check payment status
-        payment_status = response_data.get('code')
-        
-        if payment_status == 'PAYMENT_SUCCESS':
-            # Update order as verified
+        if status == 'TXN_SUCCESS':
+            # Payment successful
             verified_at = datetime.now(timezone.utc)
             
             await db.orders.update_one(
-                {"payment_gateway_txn_id": merchant_transaction_id},
+                {"order_id": order_id},
                 {
                     "$set": {
                         "status": "success",
                         "verified_at": verified_at.isoformat(),
-                        "gateway_response": response_data
+                        "payment_gateway_txn_id": txn_id,
+                        "gateway_response": paytm_params
                     }
                 }
             )
             
-            logger.info(f"Payment successful: {merchant_transaction_id}")
+            logger.info(f"Payment successful: {order_id}")
             
             # Redirect to success page
-            frontend_url = os.environ.get('REACT_APP_BACKEND_URL', 'http://localhost:3000').replace(':8001', ':3000')
-            return RedirectResponse(url=f"{frontend_url}/payment-success?order_id={order['order_id']}")
+            frontend_url = BACKEND_URL.replace(':8001', ':3000').replace('api.', '')
+            return RedirectResponse(url=f"{frontend_url}/payment-success?order_id={order_id}")
         
         else:
-            # Payment failed or pending
+            # Payment failed
             await db.orders.update_one(
-                {"payment_gateway_txn_id": merchant_transaction_id},
+                {"order_id": order_id},
                 {
                     "$set": {
                         "status": "failed",
-                        "gateway_response": response_data
+                        "gateway_response": paytm_params
                     }
                 }
             )
             
-            logger.warning(f"Payment failed: {merchant_transaction_id}, Status: {payment_status}")
+            logger.warning(f"Payment failed: {order_id}, Status: {status}, Msg: {resp_msg}")
             
             # Redirect to failure page
-            frontend_url = os.environ.get('REACT_APP_BACKEND_URL', 'http://localhost:3000').replace(':8001', ':3000')
-            return RedirectResponse(url=f"{frontend_url}/payment-failed?order_id={order['order_id']}")
+            frontend_url = BACKEND_URL.replace(':8001', ':3000').replace('api.', '')
+            return RedirectResponse(url=f"{frontend_url}/payment-failed?order_id={order_id}")
         
     except HTTPException:
         raise
@@ -439,54 +507,36 @@ async def payment_callback(request: Request):
 async def check_payment_status(order_id: str):
     """
     Check payment status by order_id
-    Makes a server-to-server call to PhonePe to verify transaction status
+    Makes a server-to-server call to Paytm to verify transaction status
     """
     try:
-        # 1. Get order
+        # 1. Get order from database
         order = await db.orders.find_one({"order_id": order_id}, {"_id": 0})
         
         if not order:
             raise HTTPException(status_code=404, detail="Order not found")
         
-        merchant_transaction_id = order.get('payment_gateway_txn_id')
+        # 2. Check with Paytm
+        paytm_response = get_payment_status_from_paytm(order_id)
         
-        if not merchant_transaction_id:
-            # Order not yet initiated with payment gateway
+        if not paytm_response["success"]:
+            # Return local status if Paytm check fails
             return PaymentStatusResponse(
-                success=False,
-                status="PENDING",
-                transaction_id="",
+                success=order['status'] == 'success',
+                status=order['status'].upper(),
+                transaction_id=order.get('payment_gateway_txn_id', ''),
                 order_id=order_id,
                 amount=order['unique_amount'],
-                message="Payment not initiated"
+                message=f"Payment status: {order['status']}"
             )
         
-        # 2. Generate checksum for status check
-        # For status API: string = endpoint + salt_key, then X-VERIFY = SHA256(string) + "###" + salt_index
-        endpoint = f"/pg/v1/status/{PHONEPE_MERCHANT_ID}/{merchant_transaction_id}"
-        string_to_hash = endpoint + PHONEPE_SALT_KEY
-        sha256_hash = hashlib.sha256(string_to_hash.encode()).hexdigest()
-        checksum = sha256_hash + "###" + str(PHONEPE_SALT_INDEX)
+        # 3. Parse Paytm response
+        response_data = paytm_response["data"]
+        result_status = response_data.get("body", {}).get("resultInfo", {}).get("resultStatus")
         
-        # 3. Make status check API call
-        headers = {
-            "Content-Type": "application/json",
-            "X-VERIFY": checksum,
-            "X-MERCHANT-ID": PHONEPE_MERCHANT_ID
-        }
-        
-        status_url = f"{PHONEPE_BASE_URL}{endpoint}"
-        
-        response = requests.get(status_url, headers=headers, timeout=30)
-        response_data = response.json()
-        
-        logger.info(f"PhonePe status check: {response_data}")
-        
-        if response_data.get('success'):
-            payment_status = response_data.get('code')
-            
-            # Update order status based on PhonePe response
-            if payment_status == 'PAYMENT_SUCCESS' and order['status'] != 'success':
+        if result_status == "TXN_SUCCESS":
+            # Update order if not already marked as success
+            if order['status'] != 'success':
                 verified_at = datetime.now(timezone.utc)
                 
                 await db.orders.update_one(
@@ -499,44 +549,43 @@ async def check_payment_status(order_id: str):
                         }
                     }
                 )
-                
-                return PaymentStatusResponse(
-                    success=True,
-                    status="PAYMENT_SUCCESS",
-                    transaction_id=merchant_transaction_id,
-                    order_id=order_id,
-                    amount=order['unique_amount'],
-                    message="Payment completed successfully"
+            
+            return PaymentStatusResponse(
+                success=True,
+                status="SUCCESS",
+                transaction_id=order.get('payment_gateway_txn_id', ''),
+                order_id=order_id,
+                amount=order['unique_amount'],
+                message="Payment completed successfully"
+            )
+        
+        elif result_status == "TXN_FAILURE":
+            # Update order status
+            if order['status'] != 'failed':
+                await db.orders.update_one(
+                    {"order_id": order_id},
+                    {"$set": {"status": "failed", "gateway_response": response_data}}
                 )
             
-            elif payment_status == 'PAYMENT_PENDING':
-                return PaymentStatusResponse(
-                    success=False,
-                    status="PAYMENT_PENDING",
-                    transaction_id=merchant_transaction_id,
-                    order_id=order_id,
-                    amount=order['unique_amount'],
-                    message="Payment is being processed"
-                )
-            
-            else:
-                # PAYMENT_FAILED or other status
-                if order['status'] != 'failed':
-                    await db.orders.update_one(
-                        {"order_id": order_id},
-                        {"$set": {"status": "failed", "gateway_response": response_data}}
-                    )
-                
-                return PaymentStatusResponse(
-                    success=False,
-                    status="PAYMENT_FAILED",
-                    transaction_id=merchant_transaction_id,
-                    order_id=order_id,
-                    amount=order['unique_amount'],
-                    message="Payment failed"
-                )
+            return PaymentStatusResponse(
+                success=False,
+                status="FAILED",
+                transaction_id=order.get('payment_gateway_txn_id', ''),
+                order_id=order_id,
+                amount=order['unique_amount'],
+                message="Payment failed"
+            )
+        
         else:
-            raise HTTPException(status_code=400, detail="Failed to check payment status")
+            # Pending or other status
+            return PaymentStatusResponse(
+                success=False,
+                status="PENDING",
+                transaction_id=order.get('payment_gateway_txn_id', ''),
+                order_id=order_id,
+                amount=order['unique_amount'],
+                message="Payment is being processed"
+            )
         
     except HTTPException:
         raise
@@ -563,7 +612,7 @@ async def get_all_orders():
     return {"orders": orders, "count": len(orders)}
 
 
-# Include the router in the main app TWICE
+# Include the router in the main app
 app.include_router(router, prefix="/api")
 app.include_router(router)
 
