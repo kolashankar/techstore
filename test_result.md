@@ -279,6 +279,18 @@ frontend:
         - working: "NA"
           agent: "main"
           comment: "UI shows only UPI app logos (PhonePe, GPay, BHIM, Paytm). Zero PhonePe gateway branding visible. Users see 'Secure Checkout' and 'Direct UPI payment' messaging. Fully white-labeled experience."
+  
+  - task: "Update Frontend for Paytm Integration"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/pages/CheckoutPage.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "COMPLETE REWRITE: Removed PhonePe redirect logic. Implemented Paytm CheckoutJS integration: 1) Dynamic script loading for Paytm merchant script from staging URL, 2) Transaction token-based payment initiation, 3) Paytm.CheckoutJS.init() and invoke() to open payment modal, 4) Updated UI to show single 'Pay via Paytm' button supporting UPI/Cards/NetBanking/Wallets. Changed header from 'Direct UPI payment' to 'Paytm Payment Gateway'. Frontend compiles and loads successfully."
 
 metadata:
   created_by: "main_agent"
