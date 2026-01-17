@@ -194,6 +194,18 @@ backend:
         - working: true
           agent: "testing"
           comment: "VERIFIED: Order model correctly updated with PhonePe fields. Order creation generates proper order_id format (ORD-XXXXXXXX), unique_amount with random paise, 30-minute payment window, and all required gateway fields. Admin orders API working correctly."
+  
+  - task: "Replace PhonePe with Paytm Gateway"
+    implemented: true
+    working: "NA"
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "COMPLETE GATEWAY REPLACEMENT: Removed all PhonePe code and dependencies. Implemented Paytm payment gateway from scratch using paytmchecksum library. New implementation includes: 1) Transaction token generation function that calls Paytm API to get txnToken, 2) Callback handler with Paytm checksum verification, 3) Payment status check with Paytm status API integration. Updated .env with Paytm staging credentials (TESTMERCHANT). Installed dependencies: paytmchecksum>=1.7.0, pycryptodome>=3.20.0. Backend running successfully on port 8001."
 
 frontend:
   - task: "Remove UTR Input Flow"
