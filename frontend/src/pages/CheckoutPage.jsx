@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ShieldCheck, Smartphone, CheckCircle2, AlertCircle, ArrowLeft, Clock, Info, Loader2 } from 'lucide-react';
-import { UPI_CONFIG } from '../lib/upi-utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
