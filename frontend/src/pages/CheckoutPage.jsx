@@ -99,6 +99,38 @@ const CheckoutPage = () => {
     return () => clearInterval(timer);
   }, [orderData]);
 
+  // Function to initialize Paytm payment
+  const initializePaytm = (config) => {
+    return new Promise((resolve, reject) => {
+      // Remove existing Paytm script if any
+      const existingScript = document.getElementById('paytm-checkout-js');
+      if (existingScript) {
+        existingScript.remove();
+      }
+
+      // Create and load Paytm checkout script
+      const script = document.createElement('script');
+      script.id = 'paytm-checkout-js';
+      script.type = 'application/javascript';
+      script.crossOrigin = 'anonymous';
+      
+      // Use staging or production URL based on environment
+      script.src = `https://securegw-stage.paytm.in/merchantpgpui/checkoutjs/merchants/${config.mid}.js`;
+      
+      script.onload = () => {
+        console.log('Paytm script loaded successfully');
+        resolve();
+      };
+      
+      script.onerror = (error) => {
+        console.error('Failed to load Paytm script:', error);
+        reject(new Error('Failed to load payment gateway'));
+      };
+      
+      document.body.appendChild(script);
+    });
+  };
+
   const handleAppClick = async (appId) => {
     if (!orderData) {
       toast.error('Order not ready. Please wait.');
@@ -114,7 +146,7 @@ const CheckoutPage = () => {
     try {
       const backendUrl = process.env.REACT_APP_BACKEND_URL;
       
-      // Call backend to initiate payment
+      // Call backend to initiate payment and get transaction token
       const response = await fetch(`${backendUrl}/api/payment/initiate`, {
         method: 'POST',
         headers: {
@@ -122,7 +154,9 @@ const CheckoutPage = () => {
         },
         body: JSON.stringify({
           order_id: orderData.order_id,
-          payment_app: appId
+          customer_id: `CUST_${orderData.order_id}`,
+          customer_email: 'customer@example.com',
+          customer_mobile: '9999999999'
         })
       });
 
@@ -133,13 +167,57 @@ const CheckoutPage = () => {
 
       const paymentData = await response.json();
       
-      if (paymentData.success && paymentData.payment_url) {
-        toast.success('Redirecting to payment...');
+      if (paymentData.success && paymentData.transaction_token) {
+        console.log('Payment data received:', paymentData);
+        toast.success('Opening Paytm payment...');
         
-        // Redirect to PhonePe payment page
-        setTimeout(() => {
-          window.location.href = paymentData.payment_url;
-        }, 500);
+        // Initialize Paytm checkout
+        await initializePaytm({
+          mid: paymentData.merchant_id,
+          orderId: paymentData.order_id
+        });
+        
+        // Configure Paytm checkout
+        const config = {
+          root: '',
+          flow: 'DEFAULT',
+          data: {
+            orderId: paymentData.order_id,
+            token: paymentData.transaction_token,
+            tokenType: 'TXN_TOKEN',
+            amount: paymentData.amount.toString()
+          },
+          merchant: {
+            mid: paymentData.merchant_id,
+            name: 'TechStore',
+            redirect: false
+          },
+          handler: {
+            notifyMerchant: function(eventName, data) {
+              console.log('Paytm Event:', eventName, data);
+            },
+            transactionStatus: function(data) {
+              console.log('Payment Status:', data);
+              // The callback will handle the redirect
+              window.close();
+            }
+          }
+        };
+
+        // Check if Paytm object is available
+        if (window.Paytm && window.Paytm.CheckoutJS) {
+          window.Paytm.CheckoutJS.init(config).then(function() {
+            console.log('Paytm Checkout initialized');
+            window.Paytm.CheckoutJS.invoke();
+          }).catch(function(error) {
+            console.error('Error initializing Paytm:', error);
+            toast.error('Failed to open payment page');
+            setIsProcessing(false);
+          });
+        } else {
+          throw new Error('Paytm checkout library not loaded');
+        }
+        
       } else {
         throw new Error('Invalid payment response');
       }
@@ -181,7 +259,7 @@ const CheckoutPage = () => {
                 <ShieldCheck className="w-8 h-8 text-primary" />
               </div>
               <h1 className="text-2xl font-bold tracking-tight text-slate-900">Secure Checkout</h1>
-              <p className="text-sm text-slate-500">Direct UPI payment • Instant verification</p>
+              <p className="text-sm text-slate-500">Paytm Payment Gateway • Instant verification</p>
             </div>
           </div>
 
@@ -231,86 +309,56 @@ const CheckoutPage = () => {
             <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <Info className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
               <div className="space-y-1 text-sm">
-                <p className="font-semibold text-blue-900">Instant Payment Verification</p>
-                <p className="text-blue-700">Select your preferred UPI app below. You'll be redirected to complete the payment securely.</p>
+                <p className="font-semibold text-blue-900">Secure Paytm Payment</p>
+                <p className="text-blue-700">Click below to pay via Paytm. Supports UPI, Cards, Net Banking, and Wallets.</p>
               </div>
             </div>
 
-            {/* Payment Selection */}
+            {/* Payment Button */}
             <Card className="shadow-lg border-slate-200">
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <div className="px-6 pt-6">
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="mobile">UPI Apps</TabsTrigger>
-                    <TabsTrigger value="qr">QR Code</TabsTrigger>
-                  </TabsList>
+              <div className="p-6 space-y-4">
+                <div className="text-center">
+                  <h3 className="text-lg font-semibold text-slate-900 mb-2">Complete Payment</h3>
+                  <p className="text-sm text-slate-500">Pay securely via Paytm Payment Gateway</p>
                 </div>
-
-                <TabsContent value="mobile" className="p-6 space-y-6 mt-0">
-                  <div className="space-y-4">
-                    <div className="text-center mb-6">
-                      <h3 className="text-lg font-semibold text-slate-900">Select UPI App</h3>
-                      <p className="text-sm text-slate-500">Choose your preferred payment app</p>
-                    </div>
-                    
-                    {isProcessing && (
-                      <div className="flex items-center justify-center gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg mb-4">
-                        <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
-                        <div className="text-sm">
-                          <p className="font-medium text-blue-900">Processing payment...</p>
-                          <p className="text-blue-700">Please wait while we redirect you</p>
-                        </div>
-                      </div>
-                    )}
-                    
-                    <div className="flex flex-col gap-3">
-                      {Object.values(UPI_CONFIG).map((app) => (
-                        <button
-                          key={app.id}
-                          onClick={() => handleAppClick(app.id)}
-                          disabled={isProcessing}
-                          data-testid={`upi-app-${app.id}`}
-                          className="flex items-center gap-4 p-4 rounded-xl border-2 border-slate-200 hover:border-primary hover:bg-primary/5 transition-all duration-200 group bg-white shadow-sm hover:shadow-md w-full text-left disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <div 
-                            className="w-14 h-14 rounded-full flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-200 flex-shrink-0 overflow-hidden"
-                            style={{ backgroundColor: app.logo ? '#ffffff' : app.color }}
-                          >
-                            {app.logo ? (
-                              <img src={app.logo} alt={app.name} className="w-full h-full object-contain p-2" />
-                            ) : (
-                              <Smartphone className="w-7 h-7 stroke-[2.5] text-white" />
-                            )}
-                          </div>
-                          <span className="font-semibold text-lg text-slate-800 group-hover:text-slate-900">{app.name}</span>
-                        </button>
-                      ))}
+                
+                {isProcessing && (
+                  <div className="flex items-center justify-center gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg mb-4">
+                    <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+                    <div className="text-sm">
+                      <p className="font-medium text-blue-900">Opening Paytm...</p>
+                      <p className="text-blue-700">Please wait</p>
                     </div>
                   </div>
-                </TabsContent>
-
-                <TabsContent value="qr" className="p-6 space-y-6 mt-0">
-                  <div className="text-center space-y-6">
-                    <div className="space-y-2">
-                      <h3 className="text-lg font-semibold">Coming Soon</h3>
-                      <p className="text-sm text-slate-500">QR code payment will be available shortly</p>
+                )}
+                
+                <Button
+                  onClick={() => handleAppClick('paytm')}
+                  disabled={isProcessing || !orderData}
+                  className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 shadow-lg hover:shadow-xl transition-all"
+                >
+                  {isProcessing ? (
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <span>Opening Payment...</span>
                     </div>
-
-                    <div className="bg-slate-100 p-8 rounded-xl">
-                      <AlertCircle className="w-16 h-16 text-slate-400 mx-auto" />
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="w-5 h-5" />
+                      <span>Pay ₹{orderData?.unique_amount?.toFixed(2)} via Paytm</span>
                     </div>
+                  )}
+                </Button>
 
-                    <p className="text-sm text-slate-600">
-                      Please use the "UPI Apps" tab to complete your payment
-                    </p>
-                  </div>
-                </TabsContent>
-              </Tabs>
+                <div className="text-center text-xs text-slate-500 pt-2">
+                  <p>Supports UPI, Credit/Debit Cards, Net Banking & Wallets</p>
+                </div>
+              </div>
             </Card>
 
             {/* Footer Trust */}
             <div className="flex justify-center gap-6 text-slate-400 grayscale opacity-60">
-              <span className="font-semibold text-xs">SECURED BY UPI</span>
+              <span className="font-semibold text-xs">SECURED BY PAYTM</span>
               <span className="font-semibold text-xs">100% SAFE</span>
               <span className="font-semibold text-xs">INSTANT VERIFY</span>
             </div>
