@@ -11,9 +11,12 @@ from typing import List, Optional
 import uuid
 from datetime import datetime, timezone, timedelta
 import random
-import PaytmChecksum
 import json
 import requests
+try:
+    import PaytmChecksum
+except ImportError:
+    from paytmchecksum import PaytmChecksum
 
 
 ROOT_DIR = Path(__file__).parent
